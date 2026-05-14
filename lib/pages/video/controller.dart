@@ -82,7 +82,6 @@ import 'package:media_kit/media_kit.dart' hide Subtitle;
 import 'package:path/path.dart' as path;
 
 void _pipTrace(String tag, String message, {int? hash}) {
-  if (!kDebugMode) return;
   final id = hash != null ? ' ctr#$hash' : '';
   debugPrint('[PiP-Trace] [VideoCtrl$id] [$tag] $message');
 }

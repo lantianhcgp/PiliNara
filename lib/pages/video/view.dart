@@ -128,7 +128,6 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
 
   // PiP 生命周期跟踪日志。便于按事件时序定位竞态。
   void _pipTrace(String tag, String message) {
-    if (!kDebugMode) return;
     String ctrlId;
     try {
       ctrlId = 'ctr#${videoDetailController.hashCode}';
