@@ -81,6 +81,12 @@ import 'package:hive_ce/hive.dart';
 import 'package:media_kit/media_kit.dart' hide Subtitle;
 import 'package:path/path.dart' as path;
 
+void _pipTrace(String tag, String message, {int? hash}) {
+  if (!kDebugMode) return;
+  final id = hash != null ? ' ctr#$hash' : '';
+  debugPrint('[PiP-Trace] [VideoCtrl$id] [$tag] $message');
+}
+
 class VideoDetailController extends GetxController
     with GetTickerProviderStateMixin, BlockMixin {
   /// 路由传参
@@ -814,8 +820,20 @@ class VideoDetailController extends GetxController
     Volume? volume,
     bool autoFullScreenFlag = false,
   }) async {
+    _pipTrace(
+      'playerInit-enter',
+      'bvid=$bvid, cid=${cid.value}, autoplay=${autoplay ?? _autoPlay.value}, '
+          'videoUrl_isNull=${videoUrl == null}, '
+          'plPlayerController_videoController_isNull=${plPlayerController.videoPlayerController == null}',
+      hash: hashCode,
+    );
     // 如果播放器单例已被外部销毁（例如在二级页面关闭了小窗），重新获取一个新实例
     if (plPlayerController.videoPlayerController == null) {
+      _pipTrace(
+        'playerInit-getInstance',
+        'videoPlayerController was null, getting new instance',
+        hash: hashCode,
+      );
       plPlayerController = PlPlayerController.getInstance();
     }
     if (isFileSource) {
@@ -825,6 +843,11 @@ class VideoDetailController extends GetxController
     if (seek == null || seek == Duration.zero) {
       seek = getFirstSegment();
     }
+    _pipTrace(
+      'playerInit-setDataSource-before',
+      'seek=$seek',
+      hash: hashCode,
+    );
     await plPlayerController.setDataSource(
       isFileSource
           ? FileSource(
@@ -853,6 +876,11 @@ class VideoDetailController extends GetxController
       pgcType: isUgc ? null : pgcType,
       videoType: videoType,
       onInit: () {
+        _pipTrace(
+          'playerInit-onInit-callback',
+          'videoState set true',
+          hash: hashCode,
+        );
         videoState.value = true;
         setSubtitle(vttSubtitlesIndex.value);
       },
@@ -861,8 +889,16 @@ class VideoDetailController extends GetxController
       volume: volume ?? this.volume,
       autoFullScreenFlag: autoFullScreenFlag,
     );
+    _pipTrace(
+      'playerInit-setDataSource-after',
+      'playerStatus=${plPlayerController.playerStatus.value}',
+      hash: hashCode,
+    );
 
-    if (isClosed) return;
+    if (isClosed) {
+      _pipTrace('playerInit-exit', 'isClosed=true, early return', hash: hashCode);
+      return;
+    }
 
     if (!isFileSource) {
       if (plPlayerController.enableBlock) {
@@ -883,6 +919,7 @@ class VideoDetailController extends GetxController
     }
 
     defaultST = null;
+    _pipTrace('playerInit-exit', 'normal completion', hash: hashCode);
   }
 
   bool isQuerying = false;
@@ -908,10 +945,20 @@ class VideoDetailController extends GetxController
     bool reinitializePlayer = true,
     bool autoFullScreenFlag = false,
   }) async {
+    _pipTrace(
+      'queryVideoUrl-enter',
+      'bvid=$bvid, cid=${cid.value}, isFileSource=$isFileSource, '
+          'isQuerying=$isQuerying, fromReset=$fromReset, '
+          'reinitializePlayer=$reinitializePlayer, '
+          'cacheVideoQa=${plPlayerController.cacheVideoQa}',
+      hash: hashCode,
+    );
     if (isFileSource) {
+      _pipTrace('queryVideoUrl-fileSource-shortcut', '', hash: hashCode);
       return _initPlayerIfNeeded(autoFullScreenFlag);
     }
     if (isQuerying) {
+      _pipTrace('queryVideoUrl-skip', 'reason=isQuerying', hash: hashCode);
       return;
     }
     isQuerying = true;
@@ -934,6 +981,11 @@ class VideoDetailController extends GetxController
             : Pref.defaultAudioQaCellular;
     }
 
+    _pipTrace(
+      'queryVideoUrl-httpRequest-before',
+      'cacheVideoQa=${plPlayerController.cacheVideoQa}',
+      hash: hashCode,
+    );
     final result = await VideoHttp.videoUrl(
       cid: cid.value,
       bvid: bvid,
@@ -943,6 +995,12 @@ class VideoDetailController extends GetxController
       videoType: _actualVideoType ?? videoType,
       language: currLang.value,
       voiceBalance: plPlayerController.enableAudioNormalization,
+    );
+    _pipTrace(
+      'queryVideoUrl-httpRequest-after',
+      'cacheVideoQa=${plPlayerController.cacheVideoQa}, '
+          'result=${result.runtimeType}',
+      hash: hashCode,
     );
 
     if (result case Success(:final response)) {

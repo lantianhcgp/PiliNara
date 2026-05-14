@@ -98,6 +98,11 @@ class PipOverlayService {
 
   static String _keyPart(Object? value) => value?.toString() ?? '';
 
+  static void _pipTrace(String tag, String message) {
+    if (!kDebugMode) return;
+    debugPrint('[PiP-Trace] [PipService] [$tag] $message');
+  }
+
   static String? buildVideoContextKey({
     Object? videoType,
     Object? bvid,
@@ -157,7 +162,16 @@ class PipOverlayService {
     dynamic controller,
     Map<String, dynamic>? additionalControllers,
   }) {
+    final incomingKey = _contextKeyFromController(controller);
+    _pipTrace(
+      'startPip-enter',
+      'incomingKey=$incomingKey, currentSavedKey=$_savedVideoContextKey, '
+          'currentlyInPipMode=$isInPipMode, '
+          'controllerHash=${controller?.hashCode}, '
+          'playerHash=${plPlayerController.hashCode}',
+    );
     if (isInPipMode) {
+      _pipTrace('startPip-skip', 'reason=already in PiP mode');
       return;
     }
 
@@ -175,6 +189,11 @@ class PipOverlayService {
     if (additionalControllers != null) {
       _savedControllers.addAll(additionalControllers);
     }
+    _pipTrace(
+      'startPip-stateSaved',
+      'savedKey=$_savedVideoContextKey, '
+          'additional=${additionalControllers?.length ?? 0}',
+    );
 
     _overlayEntry = OverlayEntry(
       builder: (context) => PipWidget(
@@ -195,6 +214,7 @@ class PipOverlayService {
       try {
         final overlayContext = Get.overlayContext ?? context;
         Overlay.of(overlayContext).insert(_overlayEntry!);
+        _pipTrace('startPip-overlayInserted', '');
 
         // 允许应用内小窗继续使用 Auto-PiP 手势
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -205,6 +225,7 @@ class PipOverlayService {
         if (kDebugMode) {
           debugPrint('Error inserting pip overlay: $e');
         }
+        _pipTrace('startPip-overlayInsertFailed', 'error=$e');
         _setSystemAutoPipEnabled(plPlayerController, false);
         isInPipMode = false;
         _overlayEntry = null;
@@ -227,7 +248,16 @@ class PipOverlayService {
     bool resetState = true,
     String? targetContextKey,
   }) {
+    _pipTrace(
+      'stopPip-enter',
+      'callOnClose=$callOnClose, immediate=$immediate, '
+          'resetState=$resetState, targetContextKey=$targetContextKey, '
+          'savedContextKey=$_savedVideoContextKey, '
+          'currentlyInPipMode=$isInPipMode, '
+          'hasOverlay=${_overlayEntry != null}',
+    );
     if (!isInPipMode && _overlayEntry == null) {
+      _pipTrace('stopPip-skip', 'reason=not in PiP mode and no overlay');
       return;
     }
 
@@ -240,6 +270,10 @@ class PipOverlayService {
         '[PiP] Stopping PiP mode (immediate: $immediate, callOnClose: $callOnClose, shouldResetState: $shouldResetState, targetContextKey: $targetContextKey, savedContextKey: $_savedVideoContextKey)',
       );
     }
+    _pipTrace(
+      'stopPip-computedReset',
+      'shouldResetState=$shouldResetState',
+    );
 
     isInPipMode = false;
     // isNativePip 是 Rx 变量，不能在 build 阶段（如 initState）同步修改，
@@ -267,7 +301,12 @@ class PipOverlayService {
     // 旧 controller 进 PiP 时 onClose 跳过了清理，需要在此同步清除
     // 其 SponsorBlock 监听器，防止旧片段数据污染新视频。
     if (shouldResetState && _savedController is VideoDetailController) {
+      _pipTrace(
+        'stopPip-resetBlock',
+        'savedController=${_savedController.hashCode}',
+      );
       (_savedController as VideoDetailController).resetBlock();
+      _pipTrace('stopPip-resetBlock-done', '');
     }
 
     _savedController = null;
@@ -286,6 +325,10 @@ class PipOverlayService {
     // 如果需要清理，先停止播放器
     if (callOnClose && playerController != null) {
       try {
+        _pipTrace(
+          'stopPip-pausePlayer',
+          'player=${playerController.hashCode}',
+        );
         // 停止播放但不 dispose，因为其他地方可能还在使用
         playerController.pause();
       } catch (e) {
@@ -301,19 +344,29 @@ class PipOverlayService {
         if (kDebugMode) {
           debugPrint('[PiP] Overlay entry removed successfully');
         }
+        _pipTrace('stopPip-overlayRemoved', '');
       } catch (e) {
         if (kDebugMode) {
           debugPrint('Error removing pip overlay: $e');
         }
+        _pipTrace('stopPip-overlayRemoveFailed', 'error=$e');
       }
+      _pipTrace(
+        'stopPip-onCloseCallback-before',
+        'hasCallback=${closeCallback != null}',
+      );
       closeCallback?.call();
+      _pipTrace('stopPip-onCloseCallback-after', '');
     }
 
     if (immediate) {
+      _pipTrace('stopPip-immediate', '');
       removeAndCallback();
     } else {
+      _pipTrace('stopPip-deferred', 'delayMs=300');
       Future.delayed(const Duration(milliseconds: 300), removeAndCallback);
     }
+    _pipTrace('stopPip-exit', '');
   }
 }
 

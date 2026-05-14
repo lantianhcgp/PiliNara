@@ -126,6 +126,18 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
     logger.i('[${videoDetailController.hashCode}] [SponsorBlock] $message');
   }
 
+  // PiP 生命周期跟踪日志。便于按事件时序定位竞态。
+  void _pipTrace(String tag, String message) {
+    if (!kDebugMode) return;
+    String ctrlId;
+    try {
+      ctrlId = 'ctr#${videoDetailController.hashCode}';
+    } catch (_) {
+      ctrlId = 'ctr#?';
+    }
+    logger.i('[PiP-Trace] [view#$hashCode] [$ctrlId] [$tag] $message');
+  }
+
   bool get autoExitFullscreen =>
       videoDetailController.plPlayerController.autoExitFullscreen;
 
@@ -706,12 +718,31 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
   void didPopNext() async {
     super.didPopNext();
 
+    _pipTrace(
+      'didPopNext-enter',
+      'isInPipMode=${PipOverlayService.isInPipMode}, '
+          '_isEnteringPipMode=$_isEnteringPipMode, '
+          '_pipRetryPending=$_pipRetryPending, '
+          'stackCount=${VideoStackManager.getCount()}, '
+          'currentRoute=${Get.currentRoute}, '
+          'previousRoute=${Get.previousRoute}, '
+          'savedContextKey=${PipOverlayService.savedVideoContextKey}, '
+          'myContextKey=${PipOverlayService.contextKeyFromArgs(videoDetailController.args)}, '
+          'isCloseAll=${videoDetailController.plPlayerController.isCloseAll}',
+    );
+
     if (videoDetailController.plPlayerController.isCloseAll) {
+      _pipTrace('didPopNext-exit', 'early return: isCloseAll');
       return;
     }
 
     // 如果 local 的 plPlayerController 实例指向了已被销毁的单例，刷新它
     if (plPlayerController != videoDetailController.plPlayerController) {
+      _pipTrace(
+        'didPopNext-plPlayerController-refresh',
+        'local=${plPlayerController?.hashCode}, '
+            'fromCtr=${videoDetailController.plPlayerController.hashCode}',
+      );
       plPlayerController = videoDetailController.plPlayerController;
     }
 
@@ -727,16 +758,25 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
       // dispose 再重建，实例比较会失败
       final isSameVideo = PipOverlayService.savedVideoContextKey ==
           PipOverlayService.contextKeyFromArgs(videoDetailController.args);
+      _pipTrace(
+        'didPopNext-pipBranch',
+        'isSameVideo=$isSameVideo',
+      );
       if (isSameVideo) {
         _logSponsorBlock(
           'Returning to video page with matching active PiP, closing PiP overlay',
         );
+        _pipTrace('didPopNext-sameVideo-stopPip-before', '');
         PipOverlayService.stopPip(
           callOnClose: false,
           immediate: true,
           targetContextKey: PipOverlayService.contextKeyFromArgs(
             videoDetailController.args,
           ),
+        );
+        _pipTrace(
+          'didPopNext-sameVideo-stopPip-after',
+          'isInPipMode=${PipOverlayService.isInPipMode}',
         );
         videoDetailController.isEnteringPip = false;
         // 小窗模式下控制栏可能被隐藏了，恢复它
@@ -746,14 +786,26 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
         _logSponsorBlock(
           'Returning to video page but PiP has different controller, closing PiP',
         );
+        _pipTrace('didPopNext-elseBranch-stopPip-before', '');
         PipOverlayService.stopPip(callOnClose: true, immediate: true);
+        _pipTrace(
+          'didPopNext-elseBranch-stopPip-after',
+          'isInPipMode=${PipOverlayService.isInPipMode}, '
+              'playerStatus=${plPlayerController?.playerStatus.value}',
+        );
         // 当前页面之前可能曾尝试进入小窗（didPushNext 设置了 _isEnteringPipMode = true），
         // 但被其他视频抢占。需要重置该标志，否则 dispose 会跳过播放器清理，
         // 且 PopScope 不在 widget tree 中导致后续返回无法触发新的小窗
         _isEnteringPipMode = false;
         // 标记需要重试 PiP：关了别人的 PiP，恢复播放器后应尝试启动自己的 PiP
         _pipRetryPending = true;
+        _pipTrace(
+          'didPopNext-elseBranch-flagSet',
+          '_isEnteringPipMode=false, _pipRetryPending=true',
+        );
       }
+    } else {
+      _pipTrace('didPopNext-pipBranch', 'no active PiP');
     }
     // 视频页返回时，若直播小窗仍在运行，也需关闭
     if (LivePipOverlayService.isInPipMode) {
@@ -763,6 +815,7 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
     // 如果是从开启新页面方式（Get.toNamed）从小窗手动返回，播放器应已在运行，跳过部分重置逻辑
     final bool fromPip = Get.arguments?['fromPip'] ?? false;
     if (fromPip) {
+      _pipTrace('didPopNext-fromPip-return', '');
       isShowing = true;
       PlPlayerController.setPlayCallBack(playCallBack);
       introController.startTimer();
@@ -828,13 +881,31 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
         plPlayerController!.cid != videoDetailController.cid.value) {
       needsRecovery = true;
     }
+    _pipTrace(
+      'didPopNext-needsRecovery',
+      'needsRecovery=$needsRecovery, '
+          'videoPlayerController=${plPlayerController?.videoPlayerController?.hashCode}, '
+          'plPlayerController.cid=${plPlayerController?.cid}, '
+          'ctrlCid=${videoDetailController.cid.value}, '
+          'isLive=${plPlayerController?.isLive}',
+    );
 
     if (needsRecovery) {
       _logSponsorBlock('Player needs recovery (disposed or content mismatch)');
+      _pipTrace(
+        'didPopNext-playerInit-before',
+        'autoplay=${videoDetailController.playerStatus?.isPlaying ?? false}',
+      );
       await videoDetailController.playerInit(
         autoplay: videoDetailController.playerStatus?.isPlaying ?? false,
       );
       plPlayerController = videoDetailController.plPlayerController;
+      _pipTrace(
+        'didPopNext-playerInit-after',
+        'playerStatus=${plPlayerController?.playerStatus.value}, '
+            'videoController=${plPlayerController?.videoController?.hashCode}, '
+            'cid=${plPlayerController?.cid}',
+      );
     } else {
       // 场景 3：直接恢复关联的小窗/后台播放器，确保界面正常显示
       // 由于小窗可能刚刚被关闭（OverlayEntry 移除），我们需要延迟一个帧再显示主页播放器
@@ -863,18 +934,34 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
     // 无论进入哪个分支，最后都刷新一下 UI
     if (mounted) setState(() {});
 
+    _pipTrace(
+      'didPopNext-end-retryCheck',
+      '_pipRetryPending=$_pipRetryPending, '
+          '_isEnteringPipMode=$_isEnteringPipMode, '
+          'isInPipMode=${PipOverlayService.isInPipMode}, '
+          'playerStatus=${plPlayerController?.playerStatus.value}, '
+          'autoPlay=${videoDetailController.autoPlay}',
+    );
+
     // 重试 PiP：_onPopInvokedWithResult 触发了 didPop=true 但被其他视频/直播的 PiP 抢先占用，
     // 现在其他 PiP 已关闭、播放器已恢复，重新尝试启动 PiP
     if (_pipRetryPending) {
       _pipRetryPending = false;
       _logSponsorBlock('Retrying PiP after closing other PiP');
+      _pipTrace('didPopNext-retry-before', '');
       _startInAppPipIfNeeded();
+      _pipTrace(
+        'didPopNext-retry-after',
+        '_isEnteringPipMode=$_isEnteringPipMode, '
+            'isInPipMode=${PipOverlayService.isInPipMode}',
+      );
       if (_isEnteringPipMode) {
         _logSponsorBlock('PiP retry succeeded');
       } else {
         _logSponsorBlock('PiP retry failed');
       }
     }
+    _pipTrace('didPopNext-exit', '');
   }
 
   @override
@@ -2560,6 +2647,16 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
   }
 
   void _onPopInvokedWithResult(bool didPop, result) {
+    _pipTrace(
+      'onPop-enter',
+      'didPop=$didPop, isInPipMode=${PipOverlayService.isInPipMode}, '
+          '_isEnteringPipMode=$_isEnteringPipMode, '
+          '_pipRetryPending=$_pipRetryPending, '
+          'stackCount=${VideoStackManager.getCount()}, '
+          'currentRoute=${Get.currentRoute}, '
+          'previousRoute=${Get.previousRoute}, '
+          'savedContextKey=${PipOverlayService.savedVideoContextKey}',
+    );
     if (didPop && Platform.isAndroid) {
       // 参考上游逻辑：返回时立即强制清空 Auto-PiP 状态，切断系统自动进入的时机，防止误触
       plPlayerController?.disableAutoEnterPip();
@@ -2572,44 +2669,74 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
       result,
       pauseOnPop: !_isEnteringPipMode,
     );
+    _pipTrace(
+      'onPop-exit',
+      'isInPipMode=${PipOverlayService.isInPipMode}, '
+          '_isEnteringPipMode=$_isEnteringPipMode, '
+          'pauseOnPop=${!_isEnteringPipMode}',
+    );
   }
 
   bool _shouldStartInAppPip() {
     _logSponsorBlock(
       'Checking PiP: count=${VideoStackManager.getCount()}, previousRoute=${Get.previousRoute}',
     );
+    _pipTrace(
+      'shouldStartPip-enter',
+      'enableInAppPip=${Pref.enableInAppPip}, '
+          'isInPipMode=${PipOverlayService.isInPipMode}, '
+          'count=${VideoStackManager.getCount()}, '
+          'currentRoute=${Get.currentRoute}, '
+          'previousRoute=${Get.previousRoute}',
+    );
     if (!Pref.enableInAppPip) {
       _logSponsorBlock('Reject PiP: in-app PiP is disabled in settings');
+      _pipTrace('shouldStartPip-reject', 'reason=enableInAppPip=false');
       return false;
     }
     if (PipOverlayService.isInPipMode) {
       _logSponsorBlock('Reject PiP: already in PiP mode');
+      _pipTrace('shouldStartPip-reject', 'reason=already in PiP mode');
       return false;
     }
     plPlayerController ??= videoDetailController.plPlayerController;
     final controller = plPlayerController;
     if (controller == null || controller.videoController == null) {
       _logSponsorBlock('Reject PiP: controller or videoController is null');
+      _pipTrace(
+        'shouldStartPip-reject',
+        'reason=controller(${controller?.hashCode})/videoController(${controller?.videoController?.hashCode}) is null',
+      );
       return false;
     }
     if (controller.isDesktopPip || controller.isPipMode) {
       _logSponsorBlock(
         'Reject PiP: isDesktopPip=${controller.isDesktopPip}, isPipMode=${controller.isPipMode}',
       );
+      _pipTrace(
+        'shouldStartPip-reject',
+        'reason=isDesktopPip=${controller.isDesktopPip}, isPipMode=${controller.isPipMode}',
+      );
       return false;
     }
     if (controller.playerStatus.value != PlayerStatus.playing) {
       _logSponsorBlock('Reject PiP: video is paused');
+      _pipTrace(
+        'shouldStartPip-reject',
+        'reason=playerStatus=${controller.playerStatus.value} (not playing)',
+      );
       return false;
     }
     if (!videoDetailController.autoPlay) {
       _logSponsorBlock('Reject PiP: autoPlay is false');
+      _pipTrace('shouldStartPip-reject', 'reason=autoPlay=false');
       return false;
     }
 
     // 如果即将进入听视频界面，不开启小窗
     if (Get.currentRoute == '/audio') {
       _logSponsorBlock('Reject PiP: Navigating to audio page');
+      _pipTrace('shouldStartPip-reject', 'reason=currentRoute=/audio');
       return false;
     }
 
@@ -2621,18 +2748,33 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
         _logSponsorBlock(
           'Allowing PiP: Returning to non-video page ($prevRoute)',
         );
+        _pipTrace(
+          'shouldStartPip-accept',
+          'isReturningToVideo=true but prevRoute=$prevRoute is non-video',
+        );
       } else {
         _logSponsorBlock(
           'Reject PiP: isReturningToVideo is true (Stack Count = ${VideoStackManager.getCount()}, Previous = $prevRoute)',
         );
+        _pipTrace(
+          'shouldStartPip-reject',
+          'reason=isReturningToVideo (count=${VideoStackManager.getCount()}, prev=$prevRoute)',
+        );
         return false;
       }
     }
+    _pipTrace('shouldStartPip-accept', 'all checks passed');
     return true;
   }
 
   void _startInAppPipIfNeeded() {
+    _pipTrace(
+      'startPipIfNeeded-enter',
+      'isInPipMode=${PipOverlayService.isInPipMode}, '
+          '_isEnteringPipMode=$_isEnteringPipMode',
+    );
     if (!_shouldStartInAppPip()) {
+      _pipTrace('startPipIfNeeded-skipped', 'shouldStartInAppPip=false');
       return;
     }
 
@@ -2640,6 +2782,10 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
     _isEnteringPipMode = true;
     _logSponsorBlock(
       'Starting PiP mode, segmentList.length: ${videoDetailController.segmentList.length}',
+    );
+    _pipTrace(
+      'startPipIfNeeded-go',
+      '_isEnteringPipMode=true, segmentList=${videoDetailController.segmentList.length}',
     );
 
     // 设置控制器标志，防止 onClose 清理资源
@@ -2676,6 +2822,10 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
     _logSponsorBlock(
       'Saved ${additionalControllers.length} additional controllers',
     );
+    _pipTrace(
+      'startPipIfNeeded-callService',
+      'additionalControllers=${additionalControllers.length}',
+    );
 
     PipOverlayService.startPip(
       plPlayerController: plPlayerController!,
@@ -2690,6 +2840,7 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
       onClose: () {
         _isEnteringPipMode = false;
         _logSponsorBlock('PiP closed by user');
+        _pipTrace('onClose-fired', '_isEnteringPipMode reset to false');
         _handleInAppPipCloseCleanup();
       },
       onTapToReturn: () {
@@ -2717,13 +2868,26 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
       },
     );
 
+    _pipTrace(
+      'startPipIfNeeded-exit',
+      'isInPipMode=${PipOverlayService.isInPipMode}',
+    );
+
     // 不需要重新初始化 SponsorBlock，因为 positionSubscription 已经存在并在工作
     // 重新调用 initSkip() 会取消并重新创建 subscription，可能导致失效
     _logSponsorBlock('PiP started, positionSubscription preserved');
   }
 
   void _handleInAppPipCloseCleanup() {
+    _pipTrace(
+      'closeCleanup-enter',
+      'isCloseAll=${videoDetailController.plPlayerController.isCloseAll}, '
+          'plPlayerController=${plPlayerController?.hashCode}, '
+          'fromCtrl=${videoDetailController.plPlayerController.hashCode}, '
+          'mounted=$mounted',
+    );
     if (videoDetailController.plPlayerController.isCloseAll) {
+      _pipTrace('closeCleanup-skip', 'reason=isCloseAll');
       return;
     }
     if (Platform.isAndroid && !videoDetailController.setSystemBrightness) {
@@ -2734,8 +2898,17 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
     plPlayerController ??= videoDetailController.plPlayerController;
     if (plPlayerController != null) {
       videoDetailController.makeHeartBeat();
+      _pipTrace(
+        'closeCleanup-disposePlayer',
+        'player=${plPlayerController.hashCode}',
+      );
       plPlayerController!.dispose();
+      _pipTrace(
+        'closeCleanup-disposePlayer-after',
+        'videoPlayerController=${plPlayerController?.videoPlayerController?.hashCode}',
+      );
     } else {
+      _pipTrace('closeCleanup-updatePlayCount', '');
       PlPlayerController.updatePlayCount();
     }
   }
