@@ -1,0 +1,118 @@
+name: Release Glass UI Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (e.g. v2.0.8-glass)"
+        required: true
+        default: "v2.0.8-glass"
+        type: string
+
+jobs:
+  android-release:
+    name: Build Android Release APK
+    runs-on: ubuntu-latest
+    permissions: write-all
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: "zulu"
+          java-version: "17"
+          cache: "gradle"
+          cache-dependency-path: |
+            android/*.gradle*
+            android/**/gradle-wrapper.properties
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version-file: pubspec.yaml
+          cache: true
+
+      - name: Apply Patches
+        working-directory: ${{ env.FLUTTER_ROOT }}
+        run: |
+          git config --global user.name "ci"
+          git config --global user.email "example@example.com"
+          git stash || true
+          git revert 362b1de29974ffc1ed6faa826e1df870d7bec75f --no-edit
+          git reset --soft HEAD~1
+          git stash pop || true
+          git apply $GITHUB_WORKSPACE/lib/scripts/bottom_sheet_patch.diff || true
+          git apply $GITHUB_WORKSPACE/lib/scripts/modal_barrier_patch.diff || true
+          git apply $GITHUB_WORKSPACE/lib/scripts/mouse_cursor_patch.diff || true
+        continue-on-error: true
+
+      - name: Set and Extract version
+        shell: pwsh
+        run: lib/scripts/build.ps1 android
+
+      - name: Flutter Build Release APK
+        run: flutter build apk --release --split-per-abi --dart-define-from-file=pili_release.json --pub
+
+      - name: Rename APKs
+        shell: bash
+        run: |
+          for file in build/app/outputs/flutter-apk/app-*-release.apk; do
+            abi=$(echo "$file" | sed -E 's|.*app-(.*)-release\.apk|\1|')
+            mv "$file" "PiliNara_glass_${{ env.version }}_${abi}.apk"
+          done
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.tag }}
+          name: "🌊 PiliNara 液态玻璃版 ${{ github.event.inputs.tag }}"
+          body: |
+            ## 🌊 液态玻璃 UI 版本
+
+            基于 PiliNara 的液态玻璃（Glassmorphism）风格改造版。
+
+            ### 🎨 新特性
+            - 毛玻璃模糊背景效果
+            - 渐变背景衬托玻璃质感
+            - 半透明层叠 + 微细边框
+            - 柔和多层阴影
+            - iOS 风格设计语言
+            - 可在设置中开关液态玻璃主题
+
+            ### 📱 下载
+            - `arm64-v8a` — 适用于大多数现代 Android 手机
+            - `armeabi-v7a` — 适用于旧版 32 位设备
+            - `x86_64` — 适用于模拟器
+
+            ### ⚠️ 注意
+            此版本为社区修改版，仅供学习交流使用。
+          files: PiliNara_glass_*.apk
+          draft: false
+          prerelease: true
+
+      - name: Upload arm64-v8a
+        uses: actions/upload-artifact@v7
+        with:
+          archive: false
+          name: Android_arm64-v8a_Glass
+          path: PiliNara_glass_*_arm64-v8a.apk
+
+      - name: Upload armeabi-v7a
+        uses: actions/upload-artifact@v7
+        with:
+          archive: false
+          name: Android_armeabi-v7a_Glass
+          path: PiliNara_glass_*_armeabi-v7a.apk
+
+      - name: Upload x86_64
+        uses: actions/upload-artifact@v7
+        with:
+          archive: false
+          name: Android_x86_64_Glass
+          path: PiliNara_glass_*_x86_64.apk
