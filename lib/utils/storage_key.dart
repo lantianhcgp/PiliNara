@@ -122,6 +122,7 @@ abstract final class SettingBoxKey {
       enableCreateDynAntifraud = 'enableCreateDynAntifraud',
       coinWithLike = 'coinWithLike',
       isPureBlackTheme = 'isPureBlackTheme',
+      isGlassTheme = 'isGlassTheme',
       antiGoodsDyn = 'antiGoodsDyn',
       removeBlockedDyn = 'removeBlockedDyn',
       removeOnlyFansVideoDyn = 'removeOnlyFansVideoDyn',

@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:PiliPlus/build_config.dart';
 import 'package:PiliPlus/common/constants.dart';
+import 'package:PiliPlus/common/glass/glass_widget.dart';
 import 'package:PiliPlus/common/widgets/back_detector.dart';
 import 'package:PiliPlus/common/widgets/custom_toast.dart';
 import 'package:PiliPlus/common/widgets/route_aware_mixin.dart';
@@ -354,6 +355,10 @@ class MyApp extends StatelessWidget {
         ),
         child: child!,
       );
+    }
+    // 液态玻璃主题 - 包裹渐变背景
+    if (Pref.isGlassTheme) {
+      child = GlassScaffoldBackground(child: child);
     }
     if (PlatformUtils.isDesktop) {
       return BackDetector(

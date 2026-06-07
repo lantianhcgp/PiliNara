@@ -1,3 +1,5 @@
+import 'package:PiliPlus/common/glass/glass_theme.dart';
+import 'package:PiliPlus/common/glass/glass_widget.dart';
 import 'package:PiliPlus/common/style.dart';
 import 'package:PiliPlus/common/widgets/custom_height_widget.dart';
 import 'package:PiliPlus/common/widgets/image/network_img_layer.dart';
@@ -9,6 +11,7 @@ import 'package:PiliPlus/pages/mine/controller.dart';
 import 'package:PiliPlus/utils/extension/get_ext.dart';
 import 'package:PiliPlus/utils/extension/size_ext.dart';
 import 'package:PiliPlus/utils/feed_back.dart';
+import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
@@ -139,6 +142,19 @@ class _HomePageState extends CommonPageState<HomePage>
   }
 
   Widget searchBar(ThemeData theme) {
+    if (Pref.isGlassTheme) {
+      return Expanded(
+        child: GlassSearchBar(
+          onTap: () => Get.toNamed(
+            '/search',
+            parameters: _homeController.enableSearchWord
+                ? {'hintText': _homeController.defaultSearch.value}
+                : null,
+          ),
+          hintText: _homeController.defaultSearch.value,
+        ),
+      );
+    }
     const borderRadius = BorderRadius.all(Radius.circular(25));
     return Expanded(
       child: SizedBox(
@@ -226,7 +242,12 @@ Widget userAvatar({
                             padding: const .all(2),
                             decoration: BoxDecoration(
                               shape: .circle,
-                              color: theme.colorScheme.secondaryContainer,
+                              color: Pref.isGlassTheme
+                                  ? GlassTheme.glassSurfaceColor(
+                                      theme.brightness,
+                                      opacity: 0.9,
+                                    )
+                                  : theme.colorScheme.secondaryContainer,
                             ),
                             child: Icon(
                               size: 14,
@@ -246,10 +267,12 @@ Widget userAvatar({
           height: 38,
           child: IconButton(
             tooltip: '点击登录',
-            style: IconButton.styleFrom(
-              padding: .zero,
-              backgroundColor: theme.colorScheme.onInverseSurface,
-            ),
+            style: Pref.isGlassTheme
+                ? GlassTheme.glassIconButtonStyle(theme.brightness)
+                : IconButton.styleFrom(
+                    padding: .zero,
+                    backgroundColor: theme.colorScheme.onInverseSurface,
+                  ),
             onPressed: mainController.toMinePage,
             icon: Icon(
               Icons.person_rounded,

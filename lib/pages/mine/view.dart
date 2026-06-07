@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:PiliPlus/common/assets.dart';
+import 'package:PiliPlus/common/glass/glass_theme.dart';
+import 'package:PiliPlus/common/glass/glass_widget.dart';
 import 'package:PiliPlus/common/style.dart';
 import 'package:PiliPlus/common/widgets/flutter/list_tile.dart';
 import 'package:PiliPlus/common/widgets/flutter/refresh_indicator.dart';
@@ -25,6 +27,7 @@ import 'package:PiliPlus/utils/extension/theme_ext.dart';
 import 'package:PiliPlus/utils/platform_utils.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_key.dart';
+import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:PiliPlus/utils/utils.dart';
 import 'package:flutter/material.dart' hide ListTile;
 import 'package:get/get.dart';
@@ -279,7 +282,8 @@ class _MediaPageState extends CommonPageState<MinePage>
       final hasLevel = levelInfo != null;
       final isVip = userInfo.vipStatus != null && userInfo.vipStatus! > 0;
       final userStat = controller.userStat.value;
-      return Column(
+
+      Widget content = Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           GestureDetector(
@@ -476,6 +480,20 @@ class _MediaPageState extends CommonPageState<MinePage>
         ),
       ),
     );
+
+    // 液态玻璃包装
+    if (Pref.isGlassTheme) {
+      content = Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        child: GlassContainer(
+          radius: GlassTheme.largeRadius,
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: content,
+        ),
+      );
+    }
+
+    return content;
   }
 
   void _autoRefresh() => Future.delayed(

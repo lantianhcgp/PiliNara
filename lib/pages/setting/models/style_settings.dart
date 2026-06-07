@@ -359,6 +359,17 @@ List<SettingsModel> get styleSettings => [
       }
     },
   ),
+  SwitchModel(
+    leading: const Icon(Icons.blur_on),
+    title: '液态玻璃主题',
+    subtitle: '启用毛玻璃模糊效果、渐变背景等iOS风格设计',
+    setKey: SettingBoxKey.isGlassTheme,
+    defaultVal: true,
+    onChanged: (value) {
+      Pref.isGlassTheme = value;
+      Get.updateMyAppTheme();
+    },
+  ),
   NormalModel(
     onTap: (context, setState) => Get.toNamed('/colorSetting'),
     leading: const Icon(Icons.color_lens_outlined),

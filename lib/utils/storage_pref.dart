@@ -790,6 +790,13 @@ abstract final class Pref {
   static bool get isPureBlackTheme =>
       _setting.get(SettingBoxKey.isPureBlackTheme, defaultValue: false);
 
+  /// 液态玻璃主题开关
+  static bool get isGlassTheme =>
+      _setting.get(SettingBoxKey.isGlassTheme, defaultValue: true);
+
+  static set isGlassTheme(bool value) =>
+      _setting.put(SettingBoxKey.isGlassTheme, value);
+
   static bool get antiGoodsDyn =>
       _setting.get(SettingBoxKey.antiGoodsDyn, defaultValue: false);
 

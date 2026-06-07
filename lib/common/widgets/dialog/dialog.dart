@@ -1,3 +1,6 @@
+import 'package:PiliPlus/common/glass/glass_theme.dart';
+import 'package:PiliPlus/common/glass/glass_widget.dart';
+import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -10,28 +13,38 @@ Future<bool> showConfirmDialog({
 }) async {
   return await showDialog<bool>(
         context: context,
-        builder: (context) => AlertDialog(
-          title: title,
-          content: content,
-          actions: [
-            TextButton(
-              onPressed: Get.back,
-              child: Text(
-                '取消',
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.outline,
+        builder: (context) {
+          final dialog = AlertDialog(
+            title: title,
+            content: content,
+            actions: [
+              TextButton(
+                onPressed: Get.back,
+                child: Text(
+                  '取消',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.outline,
+                  ),
                 ),
               ),
-            ),
-            TextButton(
-              onPressed: () {
-                Get.back(result: true);
-                onConfirm?.call();
-              },
-              child: const Text('确认'),
-            ),
-          ],
-        ),
+              TextButton(
+                onPressed: () {
+                  Get.back(result: true);
+                  onConfirm?.call();
+                },
+                child: const Text('确认'),
+              ),
+            ],
+          );
+          if (Pref.isGlassTheme) {
+            return GlassContainer(
+              radius: GlassTheme.largeRadius,
+              blurSigma: GlassTheme.heavyBlurSigma,
+              child: dialog,
+            );
+          }
+          return dialog;
+        },
       ) ??
       false;
 }

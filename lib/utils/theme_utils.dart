@@ -1,3 +1,4 @@
+import 'package:PiliPlus/common/glass/glass_theme.dart';
 import 'package:PiliPlus/common/style.dart';
 import 'package:PiliPlus/utils/extension/theme_ext.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
@@ -172,6 +173,10 @@ abstract final class ThemeUtils {
         themeData = darkenTheme(themeData);
       }
     }
+    // 液态玻璃模式
+    if (Pref.isGlassTheme) {
+      themeData = applyGlassTheme(themeData, isDark: isDark);
+    }
     return themeData;
   }
 
@@ -221,6 +226,100 @@ abstract final class ThemeUtils {
         surfaceContainerHigh: colorScheme.surfaceContainerHigh.darken(),
         surfaceContainerHighest: colorScheme.surfaceContainerHighest.darken(
           0.4,
+        ),
+      ),
+    );
+  }
+
+  /// 应用液态玻璃主题覆盖
+  static ThemeData applyGlassTheme(ThemeData themeData, {required bool isDark}) {
+    final colorScheme = themeData.colorScheme;
+
+    return themeData.copyWith(
+      // Scaffold 背景设为透明，让渐变背景透过
+      scaffoldBackgroundColor: Colors.transparent,
+      // AppBar 玻璃化
+      appBarTheme: themeData.appBarTheme.copyWith(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
+        shadowColor: Colors.transparent,
+      ),
+      // 卡片玻璃化
+      cardTheme: themeData.cardTheme.copyWith(
+        color: Colors.transparent,
+        elevation: 0,
+        shadowColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(GlassTheme.standardRadius),
+        ),
+      ),
+      // 对话框玻璃化
+      dialogTheme: themeData.dialogTheme.copyWith(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(GlassTheme.largeRadius),
+        ),
+      ),
+      // 底部面板玻璃化
+      bottomSheetTheme: themeData.bottomSheetTheme.copyWith(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+      ),
+      // 底部导航栏玻璃化
+      bottomNavigationBarTheme:
+          themeData.bottomNavigationBarTheme.copyWith(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
+      navigationBarTheme: themeData.navigationBarTheme.copyWith(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        shadowColor: Colors.transparent,
+      ),
+      navigationRailTheme: themeData.navigationRailTheme.copyWith(
+        backgroundColor: Colors.transparent,
+      ),
+      // 弹出菜单玻璃化
+      popupMenuTheme: themeData.popupMenuTheme.copyWith(
+        color: GlassTheme.glassSurfaceColor(
+          isDark ? Brightness.dark : Brightness.light,
+        ),
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        shadowColor: Colors.transparent,
+      ),
+      // 列表 Tile 主题
+      listTileTheme: themeData.listTileTheme.copyWith(
+        tileColor: Colors.transparent,
+      ),
+      // SnackBar 玻璃化
+      snackBarTheme: themeData.snackBarTheme.copyWith(
+        backgroundColor: GlassTheme.glassSurfaceColor(
+          isDark ? Brightness.dark : Brightness.light,
+          opacity: 0.85,
+        ),
+      ),
+      // ColorScheme 调整 — 降低 surface 系列的饱和度
+      colorScheme: colorScheme.copyWith(
+        surface: Colors.transparent,
+        surfaceContainer: GlassTheme.glassSurfaceColor(
+          isDark ? Brightness.dark : Brightness.light,
+          opacity: 0.5,
+        ),
+        surfaceContainerHigh: GlassTheme.glassSurfaceColor(
+          isDark ? Brightness.dark : Brightness.light,
+          opacity: 0.65,
+        ),
+        surfaceContainerHighest: GlassTheme.glassSurfaceColor(
+          isDark ? Brightness.dark : Brightness.light,
+          opacity: 0.8,
         ),
       ),
     );
