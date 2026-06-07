@@ -7,10 +7,10 @@ import 'package:flutter/material.dart';
 abstract final class GlassTheme {
   // ── 玻璃透明度 ──
   /// 浅色模式下玻璃底板透明度
-  static const double _lightGlassOpacity = 0.55;
+  static const double _lightGlassOpacity = 0.72;
 
   /// 深色模式下玻璃底板透明度
-  static const double _darkGlassOpacity = 0.45;
+  static const double _darkGlassOpacity = 0.58;
 
   /// 浅色模式边框透明度
   static const double _lightBorderOpacity = 0.18;
@@ -48,19 +48,27 @@ abstract final class GlassTheme {
     return [
       BoxShadow(
         color: isDark
-            ? Colors.black.withValues(alpha: 0.3)
-            : Colors.black.withValues(alpha: 0.08),
-        blurRadius: 20,
-        spreadRadius: -2,
-        offset: const Offset(0, 8),
+            ? Colors.black.withValues(alpha: 0.5)
+            : Colors.black.withValues(alpha: 0.12),
+        blurRadius: 30,
+        spreadRadius: -4,
+        offset: const Offset(0, 12),
       ),
       BoxShadow(
         color: isDark
-            ? Colors.black.withValues(alpha: 0.2)
-            : Colors.black.withValues(alpha: 0.04),
-        blurRadius: 8,
-        spreadRadius: -1,
-        offset: const Offset(0, 2),
+            ? Colors.black.withValues(alpha: 0.3)
+            : Colors.black.withValues(alpha: 0.06),
+        blurRadius: 12,
+        spreadRadius: -2,
+        offset: const Offset(0, 4),
+      ),
+      BoxShadow(
+        color: isDark
+            ? Colors.white.withValues(alpha: 0.03)
+            : Colors.white.withValues(alpha: 0.8),
+        blurRadius: 1,
+        spreadRadius: 0,
+        offset: const Offset(0, 1),
       ),
     ];
   }
@@ -155,22 +163,26 @@ abstract final class GlassTheme {
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
         colors: [
-          Color(0xFF0D0221), // 深紫黑
-          Color(0xFF0F172A), // 深蓝灰
+          Color(0xFF1A0533), // 深紫
+          Color(0xFF0D1B3E), // 深蓝
           Color(0xFF1A0A2E), // 暗紫
-          Color(0xFF0C1929), // 深蓝黑
+          Color(0xFF0B1A30), // 深蓝黑
+          Color(0xFF150528), // 暗紫罗兰
         ],
+        stops: [0.0, 0.3, 0.5, 0.75, 1.0],
       );
     }
     return const LinearGradient(
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
       colors: [
-        Color(0xFFE8F0FE), // 淡蓝白
-        Color(0xFFF0E6FF), // 淡紫白
-        Color(0xFFE0F0FF), // 淡天蓝
-        Color(0xFFF5F0FF), // 淡紫罗兰
+        Color(0xFFC8E0FF), // 天空蓝
+        Color(0xFFE0D0FF), // 薰衣草
+        Color(0xFFC8E8FF), // 浅天蓝
+        Color(0xFFFFD0E8), // 粉红
+        Color(0xFFD8D0FF), // 淡紫
       ],
+      stops: [0.0, 0.25, 0.5, 0.75, 1.0],
     );
   }
 

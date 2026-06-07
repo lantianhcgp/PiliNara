@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:PiliPlus/common/assets.dart';
 import 'package:PiliPlus/common/constants.dart';
+import 'package:PiliPlus/common/glass/glass_theme.dart';
 import 'package:PiliPlus/common/style.dart';
 import 'package:PiliPlus/common/widgets/floating_navigation_bar.dart';
 import 'package:PiliPlus/common/widgets/flutter/pop_scope.dart';
@@ -473,17 +474,36 @@ class _MainAppState extends PopScopeState<MainApp>
       );
     }
 
+    // 构建 Scaffold body 内容
+    Widget bodyContent = Padding(
+      padding: EdgeInsets.only(
+        left: _mainController.useBottomNav ? _padding.left : 0.0,
+        right: _padding.right,
+      ),
+      child: child,
+    );
+
+    // 液态玻璃：用 Stack 在内容下方铺渐变背景
+    if (Pref.isGlassTheme) {
+      bodyContent = Stack(
+        children: [
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: GlassTheme.scaffoldBackgroundGradient(theme.brightness),
+              ),
+            ),
+          ),
+          bodyContent,
+        ],
+      );
+    }
+
     child = Scaffold(
       extendBody: true,
       resizeToAvoidBottomInset: false,
       appBar: AppBar(toolbarHeight: 0),
-      body: Padding(
-        padding: EdgeInsets.only(
-          left: _mainController.useBottomNav ? _padding.left : 0.0,
-          right: _padding.right,
-        ),
-        child: child,
-      ),
+      body: bodyContent,
       bottomNavigationBar: bottomNav,
     );
 
