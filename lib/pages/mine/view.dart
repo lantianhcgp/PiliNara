@@ -443,6 +443,20 @@ class _MediaPageState extends CommonPageState<MinePage>
           ),
         ],
       );
+
+      // 液态玻璃包装
+      if (Pref.isGlassTheme) {
+        content = Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          child: GlassContainer(
+            radius: GlassTheme.largeRadius,
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: content,
+          ),
+        );
+      }
+
+      return content;
     });
   }
 
@@ -480,20 +494,6 @@ class _MediaPageState extends CommonPageState<MinePage>
         ),
       ),
     );
-
-    // 液态玻璃包装
-    if (Pref.isGlassTheme) {
-      content = Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        child: GlassContainer(
-          radius: GlassTheme.largeRadius,
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          child: content,
-        ),
-      );
-    }
-
-    return content;
   }
 
   void _autoRefresh() => Future.delayed(
